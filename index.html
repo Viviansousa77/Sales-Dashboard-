@@ -337,7 +337,7 @@ function groupByAE(data) {
 }
 
 // ── BUILD AE CARD ─────────────────────────────────────────────────────────
-function buildAECard(ae, rows, doneColor, fcColor) {
+function buildAECard(ae, rows, doneColor, fcColor, tipo) {
   const col = aeColor(ae);
   const maio = rows.find(r=>r.period==="Maio 2026") || {};
   const q2   = rows.find(r=>r.period==="Q2 Acumulado") || {};
@@ -358,7 +358,7 @@ function buildAECard(ae, rows, doneColor, fcColor) {
       <div class="ae-av" style="background:${col.bg};color:${col.fg};">${initials}</div>
       <div>
         <div class="ae-name">${ae}</div>
-        <span class="ae-badge" style="background:${col.badge};color:${col.badgeFg};">${maio.period?'Existing':'—'}</span>
+        <span class="ae-badge" style="background:${col.badge};color:${col.badgeFg};">${tipo}</span>
       </div>
     </div>
     ${mMeta>0 ? `
@@ -523,13 +523,13 @@ function render() {
   // NEW tab
   const newGroups = groupByAE(DATA_NEW);
   document.getElementById('new-ae-grid').innerHTML =
-    Object.entries(newGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#4f8ef7')).join('');
+    Object.entries(newGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#4f8ef7','New')).join('');
   document.getElementById('new-team').innerHTML = buildTeamTotal(DATA_NEW,'#4f8ef7','#4f8ef7');
 
   // EXISTING tab
   const exGroups = groupByAE(DATA_EX);
   document.getElementById('ex-ae-grid').innerHTML =
-    Object.entries(exGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#1fba82')).join('');
+    Object.entries(exGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#1fba82','Existing')).join('');
   document.getElementById('ex-team').innerHTML = buildTeamTotal(DATA_EX,'#1fba82','#1fba82');
 
   // Charts
