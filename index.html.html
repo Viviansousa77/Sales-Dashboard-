@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Dashboard — New & Existing · 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f1117;--surface:#181c27;--s2:#1e2333;--border:#2a2f42;
+  --text:#e8eaf0;--muted:#7b82a0;--muted2:#4a5068;
+  --green:#1fba82;--greenDim:#0d3325;--greenMid:#0f6e56;
+  --blue:#4f8ef7;--blueDim:#1a2540;
+  --amber:#f5a623;--amberDim:#3a2a0a;
+  --red:#e05b5b;--redDim:#3a1010;
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+
+/* HEADER */
+.top-header{background:#131722;border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.top-header h1{font-size:19px;font-weight:600;letter-spacing:-0.3px;}
+.top-header .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.header-right{text-align:right;font-size:11px;color:var(--muted);line-height:1.6;}
+.header-right strong{color:var(--green);font-size:12px;}
+.status-pill{display:inline-flex;align-items:center;gap:5px;background:var(--greenDim);color:var(--green);font-size:11px;padding:3px 10px;border-radius:20px;margin-top:4px;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:200px;background:#131722;border-right:1px solid var(--border);padding:24px 0;flex-shrink:0;overflow-y:auto;}
+.sidebar-section{font-size:9px;font-weight:600;letter-spacing:0.12em;color:var(--muted2);padding:0 18px;margin:20px 0 8px;}
+.sidebar-section:first-child{margin-top:0;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 18px;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .15s;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.nav-item.active{color:var(--text);border-left-color:var(--blue);background:rgba(79,142,247,.06);}
+.nav-item.active-green{color:var(--text);border-left-color:var(--green);background:rgba(31,186,130,.06);}
+.nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;padding:26px 28px;}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0;}
+.tab{padding:9px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab.active-green{color:var(--green);border-bottom-color:var(--green);}
+.view{display:none;}
+.view.active{display:block;}
+
+/* SECTION LABEL */
+.slabel{font-size:9px;font-weight:600;letter-spacing:0.12em;color:var(--muted);margin-bottom:5px;}
+.stitle{font-size:24px;font-weight:600;letter-spacing:-0.5px;margin-bottom:3px;}
+.ssub{font-size:12px;color:var(--muted);margin-bottom:24px;}
+
+/* METRIC CARDS */
+.cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.mcard{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.mcard.hl-green{border-color:var(--green);}
+.mcard.hl-red{border-color:var(--red);}
+.mcard.hl-amber{border-color:var(--amber);}
+.mcard-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;}
+.mcard-val{font-size:26px;font-weight:600;letter-spacing:-0.5px;font-family:'DM Mono',monospace;line-height:1;}
+.mcard-val.green{color:var(--green);}
+.mcard-val.amber{color:var(--amber);}
+.mcard-val.red{color:var(--red);}
+.mcard-val.blue{color:var(--blue);}
+.mcard-note{font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.tag{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:500;}
+.tag-green{background:var(--greenDim);color:var(--green);}
+.tag-red{background:var(--redDim);color:var(--red);}
+.tag-amber{background:var(--amberDim);color:var(--amber);}
+.tag-blue{background:var(--blueDim);color:var(--blue);}
+
+/* CHART ROW */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.chart-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.chart-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;}
+
+/* AE CARDS */
+.ae-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:24px;}
+.ae-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.ae-card-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.ae-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+.ae-name{font-size:14px;font-weight:600;}
+.ae-badge{font-size:10px;padding:2px 7px;border-radius:4px;margin-top:2px;display:inline-block;font-weight:500;}
+.period-block{margin-bottom:14px;}
+.period-block:last-of-type{margin-bottom:0;}
+.plabel{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+.ppct{font-size:11px;font-weight:600;}
+.nums{display:flex;gap:14px;margin-bottom:8px;}
+.nitem{flex:1;}
+.nlabel{font-size:9px;color:var(--muted);margin-bottom:2px;}
+.nval{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;}
+.bar-wrap{height:7px;background:#252b3d;border-radius:4px;overflow:hidden;display:flex;margin-bottom:5px;}
+.bar-done{height:100%;}
+.bar-fc{height:100%;opacity:.45;}
+.bar-legend{display:flex;gap:12px;flex-wrap:wrap;}
+.bleg{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.bleg-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.clients-row{font-size:10px;color:var(--muted);padding-top:9px;border-top:1px solid var(--border);margin-top:8px;line-height:1.5;}
+.clients-row span{color:var(--text);}
+
+/* TEAM TOTAL */
+.team-card{background:var(--s2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:24px;}
+.team-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.team-period-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;}
+.team-main{font-size:26px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-0.5px;margin-bottom:4px;}
+.team-subs{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;}
+.tsub{font-size:11px;color:var(--muted);}
+.tsub strong{color:var(--text);font-weight:500;}
+.team-bar{height:10px;background:#252b3d;border-radius:5px;overflow:hidden;display:flex;margin-bottom:6px;}
+
+/* SHEETS SETUP */
+.sheets-setup{background:var(--s2);border:1px solid var(--amber);border-radius:var(--radius);padding:20px;margin-bottom:24px;}
+.sheets-setup h3{font-size:14px;font-weight:600;color:var(--amber);margin-bottom:10px;}
+.sheets-setup p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:8px;}
+.sheets-setup code{background:#252b3d;color:var(--blue);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;}
+.sheets-input{display:flex;gap:8px;margin-top:12px;}
+.sheets-input input{flex:1;background:#252b3d;border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
+.sheets-input input:focus{border-color:var(--blue);}
+.btn{background:var(--blue);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .15s;}
+.btn:hover{opacity:.85;}
+.btn-green{background:var(--green);}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+.section-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;}
+.no-data{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
+.footer{background:#131722;border-top:1px solid var(--border);padding:10px 32px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0;}
+.leg-row{display:flex;gap:18px;margin-bottom:16px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+.leg-sq{width:10px;height:10px;border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div class="top-header">
+  <div>
+    <h1>Sales — New &amp; Existing</h1>
+    <div class="sub">Resultado + Forecast por AE · Brasil · Maio 2026 e Q2</div>
+  </div>
+  <div class="header-right">
+    Fonte de dados<br>
+    <strong id="source-label">Dados locais (planilha não conectada)</strong>
+    <div><span class="status-pill"><span class="status-dot"></span><span id="update-label">Sem conexão com Sheets</span></span></div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-section">VISÃO</div>
+    <div class="nav-item active" onclick="switchTab('exec')">📊 Visão Executiva</div>
+    <div class="sidebar-section">SEGMENTO</div>
+    <div class="nav-item" onclick="switchTab('new')">🔵 New</div>
+    <div class="nav-item" onclick="switchTab('existing')">🟢 Existing</div>
+    <div class="sidebar-section">AEs — NEW</div>
+    <div class="nav-item" onclick="switchTab('new');scrollToAE('Daniel')">Daniel</div>
+    <div class="nav-item" onclick="switchTab('new');scrollToAE('Pedro')">Pedro</div>
+    <div class="sidebar-section">AEs — EXISTING</div>
+    <div class="nav-item" onclick="switchTab('existing');scrollToAE('Bianca')">Bianca</div>
+    <div class="nav-item" onclick="switchTab('existing');scrollToAE('Leo')">Leo</div>
+    <div class="nav-item" onclick="switchTab('existing');scrollToAE('Pedro')">Pedro</div>
+    <div class="sidebar-section">CONFIG</div>
+    <div class="nav-item" onclick="switchTab('config')">⚙ Google Sheets</div>
+  </div>
+
+  <div class="main">
+
+    <!-- ── VISÃO EXECUTIVA ─────────────────────────────────── -->
+    <div class="view active" id="view-exec">
+      <div class="slabel">VISÃO EXECUTIVA</div>
+      <div class="stitle">Maio 2026</div>
+      <div class="ssub" id="exec-sub">Sales | BR · New + Existing · Realizado + Forecast</div>
+
+      <div class="cards-row" id="exec-cards">
+        <div class="no-data" style="grid-column:1/-1;">Carregando dados...</div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-lbl">MAIO — REALIZADO VS FORECAST VS META (NEW)</div>
+          <div style="position:relative;height:190px;"><canvas id="chart-new-maio" role="img" aria-label="Gráfico New Maio">Realizado e forecast New por AE.</canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-lbl">MAIO — REALIZADO VS FORECAST VS META (EXISTING)</div>
+          <div style="position:relative;height:190px;"><canvas id="chart-ex-maio" role="img" aria-label="Gráfico Existing Maio">Realizado e forecast Existing por AE.</canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NEW ───────────────────────────────────────────────── -->
+    <div class="view" id="view-new">
+      <div class="slabel">SEGMENTO</div>
+      <div class="stitle" style="color:var(--blue);">New</div>
+      <div class="ssub">Novas parcerias · Realizado + Forecast · Maio 2026 e Q2</div>
+      <div class="leg-row">
+        <span class="leg-item"><span class="leg-sq" style="background:#1fba82;"></span>Realizado</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#4f8ef7;opacity:.6;"></span>Forecast previsto</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#252b3d;border:1px solid #3a4160;"></span>Meta restante</span>
+      </div>
+      <div class="section-title">Por AE</div>
+      <div class="ae-grid" id="new-ae-grid"><div class="no-data">Carregando...</div></div>
+      <div class="section-title">Total New — time</div>
+      <div class="team-card" id="new-team"></div>
+    </div>
+
+    <!-- ── EXISTING ──────────────────────────────────────────── -->
+    <div class="view" id="view-existing">
+      <div class="slabel">SEGMENTO</div>
+      <div class="stitle" style="color:var(--green);">Existing</div>
+      <div class="ssub">Base existente · Realizado + Forecast · Maio 2026 e Q2</div>
+      <div class="leg-row">
+        <span class="leg-item"><span class="leg-sq" style="background:#1fba82;"></span>Realizado</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#1fba82;opacity:.5;"></span>Forecast previsto</span>
+        <span class="leg-item"><span class="leg-sq" style="background:#252b3d;border:1px solid #3a4160;"></span>Meta restante</span>
+      </div>
+      <div class="section-title">Por AE</div>
+      <div class="ae-grid" id="ex-ae-grid"><div class="no-data">Carregando...</div></div>
+      <div class="section-title">Total Existing — time</div>
+      <div class="team-card" id="ex-team"></div>
+    </div>
+
+    <!-- ── CONFIG ────────────────────────────────────────────── -->
+    <div class="view" id="view-config">
+      <div class="slabel">CONFIGURAÇÃO</div>
+      <div class="stitle">Conectar Google Sheets</div>
+      <div class="ssub">Atualize os dados pela planilha sem precisar editar o HTML</div>
+
+      <div class="sheets-setup">
+        <h3>Como conectar</h3>
+        <p><strong>1.</strong> Abra a planilha <code>sales_dashboard_data.xlsx</code> no Google Sheets (Arquivo → Importar)</p>
+        <p><strong>2.</strong> Vá em <strong>Extensões → Apps Script</strong>, cole o código fornecido e implante como App da Web</p>
+        <p><strong>3.</strong> Cole a URL do Apps Script abaixo:</p>
+        <div class="sheets-input">
+          <input type="text" id="url-script" placeholder="https://script.google.com/macros/s/.../exec" />
+          <button class="btn btn-green" onclick="saveAndLoad()">Conectar e carregar</button>
+        </div>
+        <p style="margin-top:12px;font-size:11px;">As URLs ficam salvas no navegador. Sempre que abrir o arquivo os dados são atualizados automaticamente.</p>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title">Status da conexão</div>
+      <div id="conn-status" style="font-size:13px;color:var(--muted);padding:12px;background:var(--s2);border-radius:var(--radius);border:1px solid var(--border);">
+        Nenhuma URL configurada. Cole as URLs acima para conectar.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  <span>Sales Dashboard · New &amp; Existing · 2026</span>
+  <span id="footer-ts">Dados locais — conecte o Google Sheets para atualização automática</span>
+</div>
+
+<script>
+// ── DATA (fallback local — substituído pelo Sheets quando conectado) ───────
+const LOCAL_NEW = [
+  {ae:"Daniel", period:"Maio 2026",    meta:4305000,  done:0,       fc:6787000, clients:"MOB · Maria Chocolate · Ceraflame · Mari Amaral · Doctor's First · Doctor's Pharmacy"},
+  {ae:"Daniel", period:"Q2 Acumulado", meta:11670500, done:2480651, fc:6787000, clients:""},
+  {ae:"Pedro",  period:"Maio 2026",    meta:2600800,  done:456137,  fc:2138000, clients:"Agui R$ 750k · Antix R$ 600k · Belli Kids R$ 788k"},
+  {ae:"Pedro",  period:"Q2 Acumulado", meta:7064000,  done:784767,  fc:2138000, clients:""},
+];
+const LOCAL_EX = [
+  {ae:"Bianca",   period:"Maio 2026",    meta:792554,  done:300000, fc:2002000, clients:"Beskow Bags R$ 440k · Mari Gelinski R$ 562k · Le Medical R$ 1M"},
+  {ae:"Bianca",   period:"Q2 Acumulado", meta:2453142, done:700000, fc:2002000, clients:"⚠ Le Medical +113k pendente validação Karen"},
+  {ae:"Leo",      period:"Maio 2026",    meta:0,       done:0,      fc:0,       clients:"Sem dados reportados"},
+  {ae:"Leo",      period:"Q2 Acumulado", meta:0,       done:0,      fc:0,       clients:""},
+  {ae:"Pedro",    period:"Maio 2026",    meta:456137,  done:456137, fc:0,       clients:"Existing já realizado em abril"},
+  {ae:"Pedro",    period:"Q2 Acumulado", meta:7064000, done:784767, fc:0,       clients:""},
+];
+
+let DATA_NEW = LOCAL_NEW, DATA_EX = LOCAL_EX;
+let chartNewMaio = null, chartExMaio = null;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+const fmt = v => {
+  if(!v && v!==0) return '—';
+  v = Number(v);
+  if(v>=1000000) return 'R$ '+(v/1000000).toFixed(2)+'M';
+  if(v>=1000) return 'R$ '+Math.round(v/1000)+'k';
+  return 'R$ '+Math.round(v);
+};
+const pct = (v,m) => m>0 ? Math.min(Math.round(v/m*100),999) : 0;
+const clamp = (v,max) => Math.min(Math.max(v,0),max);
+const pctColor = p => p>=80?'var(--green)':p>=50?'var(--amber)':'var(--red)';
+
+// ── AE COLORS ─────────────────────────────────────────────────────────────
+const AE_COLORS = {
+  Daniel: {bg:'#1a2540',fg:'#4f8ef7',badge:'#1a2540',badgeFg:'#4f8ef7'},
+  Pedro:  {bg:'#0d3325',fg:'#1fba82',badge:'#0d3325',badgeFg:'#1fba82'},
+  Bianca: {bg:'#1e1640',fg:'#a78bfa',badge:'#1e1640',badgeFg:'#a78bfa'},
+  Leo:    {bg:'#252b3d',fg:'#7b82a0',badge:'#252b3d',badgeFg:'#7b82a0'},
+  Nathalia:{bg:'#252b3d',fg:'#7b82a0',badge:'#252b3d',badgeFg:'#7b82a0'},
+  Regina: {bg:'#3a1a2a',fg:'#e879a8',badge:'#3a1a2a',badgeFg:'#e879a8'},
+};
+const aeColor = name => AE_COLORS[name] || {bg:'#252b3d',fg:'#7b82a0',badge:'#252b3d',badgeFg:'#7b82a0'};
+
+// ── GROUP DATA BY AE ──────────────────────────────────────────────────────
+function groupByAE(data) {
+  const map = {};
+  data.forEach(row => {
+    if(!map[row.ae]) map[row.ae] = [];
+    map[row.ae].push(row);
+  });
+  return map;
+}
+
+// ── BUILD AE CARD ─────────────────────────────────────────────────────────
+function buildAECard(ae, rows, doneColor, fcColor) {
+  const col = aeColor(ae);
+  const maio = rows.find(r=>r.period==="Maio 2026") || {};
+  const q2   = rows.find(r=>r.period==="Q2 Acumulado") || {};
+
+  const mMeta = Number(maio.meta)||0, mDone = Number(maio.done)||0, mFc = Number(maio.fc)||0;
+  const qMeta = Number(q2.meta)||0,   qDone = Number(q2.done)||0,   qFc = Number(q2.fc)||0;
+  const mCom = mDone+mFc, qCom = qDone+qFc;
+  const mPct = pct(mCom,mMeta), qPct = pct(qCom,qMeta);
+  const mDonePct = clamp(pct(mDone,mMeta),100);
+  const mFcPct   = clamp(pct(mFc,mMeta), 100-mDonePct);
+  const qDonePct = clamp(pct(qDone,qMeta),100);
+  const qFcPct   = clamp(pct(qFc,qMeta), 100-qDonePct);
+  const initials = ae.substring(0,2).toUpperCase();
+  const clients  = maio.clients || q2.clients || '';
+
+  return `<div class="ae-card" id="ae-${ae}">
+    <div class="ae-card-head">
+      <div class="ae-av" style="background:${col.bg};color:${col.fg};">${initials}</div>
+      <div>
+        <div class="ae-name">${ae}</div>
+        <span class="ae-badge" style="background:${col.badge};color:${col.badgeFg};">${maio.period?'Existing':'—'}</span>
+      </div>
+    </div>
+    ${mMeta>0 ? `
+    <div class="period-block">
+      <div class="plabel">MAIO 2026 <span class="ppct" style="color:${pctColor(mPct)};">${mPct}% c/ forecast</span></div>
+      <div class="nums">
+        <div class="nitem"><div class="nlabel">Realizado</div><div class="nval" style="color:${doneColor};">${fmt(mDone)}</div></div>
+        <div class="nitem"><div class="nlabel">+ Forecast</div><div class="nval" style="color:${fcColor};">${fmt(mFc)}</div></div>
+        <div class="nitem"><div class="nlabel">Meta</div><div class="nval">${fmt(mMeta)}</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-done" style="width:${mDonePct}%;background:${doneColor};"></div>
+        <div class="bar-fc" style="width:${mFcPct}%;background:${fcColor};"></div>
+      </div>
+      <div class="bar-legend">
+        <span class="bleg"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${mDonePct}%</span>
+        <span class="bleg"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${mFcPct}%</span>
+      </div>
+    </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Sem meta definida para Maio</div>'}
+    ${qMeta>0 ? `
+    <div class="period-block" style="margin-bottom:0;">
+      <div class="plabel">Q2 ACUMULADO <span class="ppct" style="color:${pctColor(qPct)};">${qPct}% c/ forecast</span></div>
+      <div class="nums">
+        <div class="nitem"><div class="nlabel">Realizado</div><div class="nval" style="color:${doneColor};">${fmt(qDone)}</div></div>
+        <div class="nitem"><div class="nlabel">+ Forecast</div><div class="nval" style="color:${fcColor};">${fmt(qFc)}</div></div>
+        <div class="nitem"><div class="nlabel">Meta Q2</div><div class="nval">${fmt(qMeta)}</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-done" style="width:${qDonePct}%;background:${doneColor};"></div>
+        <div class="bar-fc" style="width:${qFcPct}%;background:${fcColor};"></div>
+      </div>
+      <div class="bar-legend">
+        <span class="bleg"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${qDonePct}%</span>
+        <span class="bleg"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${qFcPct}%</span>
+      </div>
+    </div>` : ''}
+    ${clients ? `<div class="clients-row">Forecast: <span>${clients}</span></div>` : ''}
+  </div>`;
+}
+
+// ── BUILD TEAM TOTAL ───────────────────────────────────────────────────────
+function buildTeamTotal(data, doneColor, fcColor) {
+  const maio = data.filter(r=>r.period==="Maio 2026");
+  const q2   = data.filter(r=>r.period==="Q2 Acumulado");
+  const sum  = (arr,k) => arr.reduce((s,r)=>s+(Number(r[k])||0),0);
+  const mMeta=sum(maio,'meta'),mDone=sum(maio,'done'),mFc=sum(maio,'fc');
+  const qMeta=sum(q2,'meta'),  qDone=sum(q2,'done'),  qFc=sum(q2,'fc');
+  const mCom=mDone+mFc, qCom=qDone+qFc;
+  const mPct=pct(mCom,mMeta), qPct=pct(qCom,qMeta);
+  const mDP=clamp(pct(mDone,mMeta),100), mFP=clamp(pct(mFc,mMeta),100-mDP);
+  const qDP=clamp(pct(qDone,qMeta),100), qFP=clamp(pct(qFc,qMeta),100-qDP);
+  return `<div class="team-grid">
+    <div>
+      <div class="team-period-lbl">MAIO 2026</div>
+      <div class="team-main" style="color:${doneColor};">${fmt(mCom)}</div>
+      <div class="team-subs">
+        <span class="tsub">Meta: <strong>${fmt(mMeta)}</strong></span>
+        <span class="tsub">Real.: <strong>${fmt(mDone)} (${pct(mDone,mMeta)}%)</strong></span>
+        <span class="tsub">Fc: <strong>+${fmt(mFc)}</strong></span>
+        <span class="tsub" style="color:${pctColor(mPct)};font-weight:600;">${mPct}% c/ fc</span>
+      </div>
+      <div class="team-bar">
+        <div class="bar-done" style="width:${mDP}%;background:${doneColor};"></div>
+        <div class="bar-fc" style="width:${mFP}%;background:${fcColor};opacity:.45;"></div>
+      </div>
+    </div>
+    <div>
+      <div class="team-period-lbl">Q2 ACUMULADO</div>
+      <div class="team-main" style="color:var(--amber);">${fmt(qCom)}</div>
+      <div class="team-subs">
+        <span class="tsub">Meta: <strong>${fmt(qMeta)}</strong></span>
+        <span class="tsub">Real.: <strong>${fmt(qDone)} (${pct(qDone,qMeta)}%)</strong></span>
+        <span class="tsub">Fc: <strong>+${fmt(qFc)}</strong></span>
+        <span class="tsub" style="color:${pctColor(qPct)};font-weight:600;">${qPct}% c/ fc</span>
+      </div>
+      <div class="team-bar">
+        <div class="bar-done" style="width:${qDP}%;background:${doneColor};"></div>
+        <div class="bar-fc" style="width:${qFP}%;background:${fcColor};opacity:.45;"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── RENDER CHART ───────────────────────────────────────────────────────────
+function renderChart(canvasId, data, existing) {
+  const maio = data.filter(r=>r.period==="Maio 2026");
+  const aes  = [...new Set(maio.map(r=>r.ae))];
+  const doneColor = existing ? '#1fba82' : '#1fba82';
+  const fcColor   = existing ? 'rgba(31,186,130,0.45)' : 'rgba(79,142,247,0.45)';
+  const metaColor = '#f5a623';
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const existing_chart = canvas._chart;
+  if(existing_chart) existing_chart.destroy();
+  const chart = new Chart(canvas,{
+    type:'bar',
+    data:{
+      labels: aes,
+      datasets:[
+        {label:'Realizado', data:aes.map(a=>{const r=maio.find(x=>x.ae===a);return r?Number(r.done):0;}), backgroundColor:doneColor, borderRadius:4, barPercentage:0.5},
+        {label:'Forecast',  data:aes.map(a=>{const r=maio.find(x=>x.ae===a);return r?Number(r.fc):0;}),   backgroundColor:fcColor,   borderRadius:4, barPercentage:0.5},
+        {label:'Meta', data:aes.map(a=>{const r=maio.find(x=>x.ae===a);return r?Number(r.meta):0;}),
+          type:'line', borderColor:metaColor, borderWidth:2, borderDash:[4,3],
+          pointBackgroundColor:metaColor, pointRadius:5, fill:false, tension:0}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#7b82a0',font:{family:'DM Sans',size:12}}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#7b82a0',font:{size:11},
+          callback:v=>v>=1000000?'R$ '+(v/1000000).toFixed(1)+'M':v>=1000?'R$ '+(v/1000)+'k':v}}
+      }
+    }
+  });
+  canvas._chart = chart;
+}
+
+// ── EXEC CARDS ────────────────────────────────────────────────────────────
+function buildExecCards() {
+  const nMaio = DATA_NEW.filter(r=>r.period==="Maio 2026");
+  const eMaio = DATA_EX.filter(r=>r.period==="Maio 2026");
+  const sum = (arr,k) => arr.reduce((s,r)=>s+(Number(r[k])||0),0);
+  const nDone=sum(nMaio,'done'), nFc=sum(nMaio,'fc'), nMeta=sum(nMaio,'meta');
+  const eDone=sum(eMaio,'done'), eFc=sum(eMaio,'fc'), eMeta=sum(eMaio,'meta');
+  const nCom=nDone+nFc, eCom=eDone+eFc;
+  const nPct=pct(nCom,nMeta), ePct=pct(eCom,eMeta);
+  const total_done=nDone+eDone, total_fc=nFc+eFc, total_meta=nMeta+eMeta;
+  const total_com=total_done+total_fc;
+  document.getElementById('exec-cards').innerHTML = `
+    <div class="mcard">
+      <div class="mcard-lbl">REALIZADO TOTAL MAIO</div>
+      <div class="mcard-val">${fmt(total_done)}</div>
+      <div class="mcard-note">New + Existing <span class="tag tag-${pct(total_done,total_meta)>=50?'green':'red'}">${pct(total_done,total_meta)}%</span></div>
+    </div>
+    <div class="mcard hl-blue">
+      <div class="mcard-lbl">META TOTAL MAIO</div>
+      <div class="mcard-val blue">${fmt(total_meta)}</div>
+      <div class="mcard-note">New ${fmt(nMeta)} · Existing ${fmt(eMeta)}</div>
+    </div>
+    <div class="mcard hl-green">
+      <div class="mcard-lbl">C/ FORECAST — NEW</div>
+      <div class="mcard-val green">${fmt(nCom)}</div>
+      <div class="mcard-note">Meta New <span class="tag tag-${nPct>=80?'green':nPct>=50?'amber':'red'}">${nPct}% c/ fc</span></div>
+    </div>
+    <div class="mcard hl-${ePct>=80?'green':ePct>=50?'amber':'red'}">
+      <div class="mcard-lbl">C/ FORECAST — EXISTING</div>
+      <div class="mcard-val ${ePct>=80?'green':ePct>=50?'amber':'red'}">${fmt(eCom)}</div>
+      <div class="mcard-note">Meta Existing <span class="tag tag-${ePct>=80?'green':ePct>=50?'amber':'red'}">${ePct}% c/ fc</span></div>
+    </div>`;
+}
+
+// ── FULL RENDER ───────────────────────────────────────────────────────────
+function render() {
+  buildExecCards();
+
+  // NEW tab
+  const newGroups = groupByAE(DATA_NEW);
+  document.getElementById('new-ae-grid').innerHTML =
+    Object.entries(newGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#4f8ef7')).join('');
+  document.getElementById('new-team').innerHTML = buildTeamTotal(DATA_NEW,'#4f8ef7','#4f8ef7');
+
+  // EXISTING tab
+  const exGroups = groupByAE(DATA_EX);
+  document.getElementById('ex-ae-grid').innerHTML =
+    Object.entries(exGroups).map(([ae,rows])=>buildAECard(ae,rows,'#1fba82','#1fba82')).join('');
+  document.getElementById('ex-team').innerHTML = buildTeamTotal(DATA_EX,'#1fba82','#1fba82');
+
+  // Charts
+  setTimeout(()=>{
+    renderChart('chart-new-maio', DATA_NEW, false);
+    renderChart('chart-ex-maio',  DATA_EX,  true);
+  }, 50);
+}
+
+// ── GOOGLE SHEETS ─────────────────────────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/nuvemshop.com.br/s/AKfycbzyxDOurPzOzviUBewS0wUDrC6FoV6dlgr0TB002niloV0rh_4PyHdxNJk1KQ70YcDs-w/exec';
+
+function parseRows(rows) {
+  return rows
+    .filter(r => r['AE'] && !String(r['AE']).startsWith('TOTAL'))
+    .map(r => ({
+      ae:      String(r['AE'] || '').trim(),
+      period:  String(r['Período'] || r['period'] || '').trim(),
+      meta:    parseFloat(String(r['Meta (R$)'] || '0').replace(/[^0-9.]/g,'')) || 0,
+      done:    parseFloat(String(r['Realizado (R$) 🟦'] || r['Realizado (R$)'] || '0').replace(/[^0-9.]/g,'')) || 0,
+      fc:      parseFloat(String(r['Forecast (R$) 🟩'] || r['Forecast (R$)'] || '0').replace(/[^0-9.]/g,'')) || 0,
+      clients: String(r['Clientes Forecast 🟩'] || r['Clientes Forecast'] || '').trim(),
+    }));
+}
+
+async function loadFromAppsScript(url) {
+  const status = document.getElementById('conn-status');
+  status.innerHTML = '⏳ Conectando ao Google Sheets...';
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.new)      DATA_NEW = parseRows(json.new);
+    if (json.existing) DATA_EX  = parseRows(json.existing);
+    render();
+    const now = new Date().toLocaleString('pt-BR');
+    document.getElementById('source-label').textContent = 'Google Sheets (live)';
+    document.getElementById('update-label').textContent = 'Atualizado: ' + now;
+    document.getElementById('footer-ts').textContent    = 'Google Sheets · Atualizado: ' + now;
+    status.innerHTML = '✅ Conectado com sucesso · ' + now;
+  } catch(e) {
+    status.innerHTML = '❌ Erro ao conectar: ' + e.message +
+      '<br><span style="color:var(--muted);font-size:11px;">Verifique se o Apps Script está publicado como "Qualquer pessoa" e tente recarregar.</span>';
+    render();
+  }
+}
+
+function saveAndLoad() {
+  const u = document.getElementById('url-script').value.trim();
+  if (u) localStorage.setItem('apps_script_url', u);
+  loadFromAppsScript(u || APPS_SCRIPT_URL);
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active','active-green'));
+  if(tab==='exec')     document.querySelector('.nav-item').classList.add('active');
+  if(tab==='new')      { renderChart('chart-new-maio',DATA_NEW,false); }
+  if(tab==='existing') { renderChart('chart-ex-maio',DATA_EX,true); }
+}
+
+function scrollToAE(name) {
+  setTimeout(()=>{
+    const el = document.getElementById('ae-'+name);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 100);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+(function init() {
+  const saved = localStorage.getItem('apps_script_url') || APPS_SCRIPT_URL;
+  const input = document.getElementById('url-script');
+  if(input) input.value = saved;
+  loadFromAppsScript(saved);
+})();
+</script>
+</body>
+</html>
