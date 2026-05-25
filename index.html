@@ -136,6 +136,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .leg-row{display:flex;gap:18px;margin-bottom:16px;flex-wrap:wrap;}
 .leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
 .leg-sq{width:10px;height:10px;border-radius:2px;}
+
+.filter-bar{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
+.filter-label{font-size:11px;color:var(--muted);margin-right:2px;}
+.fbtn{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--s2);color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif;}
+.fbtn:hover{border-color:var(--muted);color:var(--text);}
+.fbtn.f-all{border-color:#7b82a0;color:var(--text);background:#252b3d;}
+.fbtn.f-done{background:#0d3325;border-color:#1fba82;color:#1fba82;}
+.fbtn.f-fc{background:#1a2540;border-color:#4f8ef7;color:#4f8ef7;}
+.fbtn.f-meta{background:#3a2a0a;border-color:#f5a623;color:#f5a623;}
+.bar-done,.bar-fc,.bar-meta-seg{transition:width .35s ease;}
 </style>
 </head>
 <body>
@@ -204,6 +214,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <span class="leg-item"><span class="leg-sq" style="background:#4f8ef7;opacity:.6;"></span>Forecast previsto</span>
         <span class="leg-item"><span class="leg-sq" style="background:#252b3d;border:1px solid #3a4160;"></span>Meta restante</span>
       </div>
+      <div class="filter-bar" id="filter-bar-new">
+        <span class="filter-label">Mostrar:</span>
+        <button class="fbtn f-all" onclick="setFilter('new','all',this)">Tudo</button>
+        <button class="fbtn" onclick="setFilter('new','done',this)">Somente Realizado</button>
+        <button class="fbtn" onclick="setFilter('new','fc',this)">Somente Forecast</button>
+        <button class="fbtn" onclick="setFilter('new','meta',this)">O que falta da meta</button>
+      </div>
       <div class="section-title">Por AE</div>
       <div class="ae-grid" id="new-ae-grid"><div class="no-data">Carregando...</div></div>
       <div class="section-title">Total New — time</div>
@@ -219,6 +236,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <span class="leg-item"><span class="leg-sq" style="background:#1fba82;"></span>Realizado</span>
         <span class="leg-item"><span class="leg-sq" style="background:#1fba82;opacity:.5;"></span>Forecast previsto</span>
         <span class="leg-item"><span class="leg-sq" style="background:#252b3d;border:1px solid #3a4160;"></span>Meta restante</span>
+      </div>
+      <div class="filter-bar" id="filter-bar-ex">
+        <span class="filter-label">Mostrar:</span>
+        <button class="fbtn f-all" onclick="setFilter('ex','all',this)">Tudo</button>
+        <button class="fbtn" onclick="setFilter('ex','done',this)">Somente Realizado</button>
+        <button class="fbtn" onclick="setFilter('ex','fc',this)">Somente Forecast</button>
+        <button class="fbtn" onclick="setFilter('ex','meta',this)">O que falta da meta</button>
       </div>
       <div class="section-title">Por AE</div>
       <div class="ae-grid" id="ex-ae-grid"><div class="no-data">Carregando...</div></div>
@@ -346,12 +370,14 @@ function buildAECard(ae, rows, doneColor, fcColor) {
         <div class="nitem"><div class="nlabel">Meta</div><div class="nval">${fmt(mMeta)}</div></div>
       </div>
       <div class="bar-wrap">
-        <div class="bar-done" style="width:${mDonePct}%;background:${doneColor};"></div>
-        <div class="bar-fc" style="width:${mFcPct}%;background:${fcColor};"></div>
+        <div class="bar-done maio-bar-done" style="width:${mDonePct}%;background:${doneColor};"></div>
+        <div class="bar-fc maio-bar-fc" style="width:${mFcPct}%;background:${fcColor};opacity:.45;"></div>
+        <div class="maio-bar-meta" style="width:0%;height:100%;background:rgba(245,166,35,0.3);"></div>
       </div>
       <div class="bar-legend">
-        <span class="bleg"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${mDonePct}%</span>
-        <span class="bleg"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${mFcPct}%</span>
+        <span class="bleg maio-num-done"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${mDonePct}%</span>
+        <span class="bleg maio-num-fc"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${mFcPct}%</span>
+        <span class="bleg maio-num-meta" style="opacity:.4;"><span class="bleg-sq" style="background:#f5a623;opacity:.5;"></span>Falta ${Math.max(100-mDonePct-mFcPct,0)}%</span>
       </div>
     </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Sem meta definida para Maio</div>'}
     ${qMeta>0 ? `
@@ -363,12 +389,14 @@ function buildAECard(ae, rows, doneColor, fcColor) {
         <div class="nitem"><div class="nlabel">Meta Q2</div><div class="nval">${fmt(qMeta)}</div></div>
       </div>
       <div class="bar-wrap">
-        <div class="bar-done" style="width:${qDonePct}%;background:${doneColor};"></div>
-        <div class="bar-fc" style="width:${qFcPct}%;background:${fcColor};"></div>
+        <div class="bar-done q2-bar-done" style="width:${qDonePct}%;background:${doneColor};"></div>
+        <div class="bar-fc q2-bar-fc" style="width:${qFcPct}%;background:${fcColor};opacity:.45;"></div>
+        <div class="q2-bar-meta" style="width:0%;height:100%;background:rgba(245,166,35,0.3);"></div>
       </div>
       <div class="bar-legend">
-        <span class="bleg"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${qDonePct}%</span>
-        <span class="bleg"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${qFcPct}%</span>
+        <span class="bleg q2-num-done"><span class="bleg-sq" style="background:${doneColor};"></span>Real. ${qDonePct}%</span>
+        <span class="bleg q2-num-fc"><span class="bleg-sq" style="background:${fcColor};opacity:.6;"></span>Fc +${qFcPct}%</span>
+        <span class="bleg q2-num-meta" style="opacity:.4;"><span class="bleg-sq" style="background:#f5a623;opacity:.5;"></span>Falta ${Math.max(100-qDonePct-qFcPct,0)}%</span>
       </div>
     </div>` : ''}
     ${clients ? `<div class="clients-row">Forecast: <span>${clients}</span></div>` : ''}
@@ -579,6 +607,91 @@ function scrollToAE(name) {
   if(input) input.value = saved;
   loadFromAppsScript(saved);
 })();
+
+// ── FILTERS ───────────────────────────────────────────────────────────────
+let FILTER = { new: 'all', ex: 'all' };
+
+function setFilter(seg, mode, btn) {
+  FILTER[seg] = mode;
+  const bar = document.getElementById('filter-bar-' + seg);
+  bar.querySelectorAll('.fbtn').forEach(b => {
+    b.classList.remove('f-all','f-done','f-fc','f-meta');
+  });
+  const cls = {all:'f-all',done:'f-done',fc:'f-fc',meta:'f-meta'}[mode];
+  btn.classList.add(cls);
+  applyFilter(seg);
+}
+
+function applyFilter(seg) {
+  const isNew = seg === 'new';
+  const data  = isNew ? DATA_NEW : DATA_EX;
+  const doneC = isNew ? '#1fba82' : '#1fba82';
+  const fcC   = isNew ? '#4f8ef7' : '#1fba82';
+  const mode  = FILTER[seg];
+  const grid  = document.getElementById(seg === 'new' ? 'new-ae-grid' : 'ex-ae-grid');
+  const groups = groupByAE(data);
+
+  Object.entries(groups).forEach(([ae, rows]) => {
+    const card = document.getElementById('ae-' + ae);
+    if (!card) return;
+    const maio = rows.find(r => r.period === 'Maio 2026') || {};
+    const q2   = rows.find(r => r.period === 'Q2 Acumulado') || {};
+
+    const update = (prefix, obj) => {
+      const meta = Number(obj.meta) || 0;
+      const done = Number(obj.done) || 0;
+      const fc   = Number(obj.fc)   || 0;
+      const rest = Math.max(meta - done - fc, 0);
+
+      const barDone = card.querySelector('.' + prefix + '-bar-done');
+      const barFc   = card.querySelector('.' + prefix + '-bar-fc');
+      const barMeta = card.querySelector('.' + prefix + '-bar-meta');
+      const numDone = card.querySelector('.' + prefix + '-num-done');
+      const numFc   = card.querySelector('.' + prefix + '-num-fc');
+      const numMeta = card.querySelector('.' + prefix + '-num-meta');
+
+      if (!barDone) return;
+
+      const dp = Math.min(Math.round(done/meta*100)||0, 100);
+      const fp = Math.min(Math.round(fc/meta*100)||0, 100-dp);
+      const rp = 100-dp-fp;
+
+      if (mode === 'all') {
+        barDone.style.width = dp+'%'; barDone.style.opacity='1';
+        barFc.style.width   = fp+'%'; barFc.style.opacity='.45';
+        if(barMeta) { barMeta.style.width='0%'; }
+        if(numDone) numDone.style.opacity='1';
+        if(numFc)   numFc.style.opacity='1';
+        if(numMeta) numMeta.style.opacity='.4';
+      } else if (mode === 'done') {
+        barDone.style.width = dp+'%'; barDone.style.opacity='1';
+        barFc.style.width   = '0%';
+        if(barMeta) barMeta.style.width='0%';
+        if(numDone) numDone.style.opacity='1';
+        if(numFc)   numFc.style.opacity='.25';
+        if(numMeta) numMeta.style.opacity='.25';
+      } else if (mode === 'fc') {
+        barDone.style.width = '0%';
+        barFc.style.width   = fp+'%'; barFc.style.opacity='1';
+        if(barMeta) barMeta.style.width='0%';
+        if(numDone) numDone.style.opacity='.25';
+        if(numFc)   numFc.style.opacity='1';
+        if(numMeta) numMeta.style.opacity='.25';
+      } else if (mode === 'meta') {
+        barDone.style.width = '0%';
+        barFc.style.width   = '0%';
+        if(barMeta) { barMeta.style.width=rp+'%'; barMeta.style.opacity='1'; }
+        if(numDone) numDone.style.opacity='.25';
+        if(numFc)   numFc.style.opacity='.25';
+        if(numMeta) numMeta.style.opacity='1';
+      }
+    };
+
+    update('maio', maio);
+    update('q2',   q2);
+  });
+}
+
 </script>
 </body>
 </html>
